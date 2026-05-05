@@ -1,6 +1,6 @@
 services:
   caddy:
-    image: poliuscorp/filesync-caddy
+    image: kryksyh/filesync-caddy
     container_name: filesync-caddy
     ports:
       - "443:443"
@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
 
   filesync:
-    image: poliuscorp/filesync
+    image: kryksyh/filesync
     container_name: filesync-app
     environment:
       - SECRET_KEY=<SECRET_KEY>

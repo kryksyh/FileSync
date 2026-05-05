@@ -1,6 +1,6 @@
 services:
   filesync:
-    image: poliuscorp/filesync
+    image: kryksyh/filesync
     container_name: filesync-app
     environment:
       - SECRET_KEY=<SECRET_KEY>
