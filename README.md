@@ -68,7 +68,7 @@ Access FileSync at `http://localhost:80`
 
 **1. Download the required files**
 
-Get [docker-compose-ssl.yml](deploy/docker-compose-ssl.yml), [Dockerfile.caddy](deploy/Dockerfile.caddy) and [Caddyfile](deploy/Caddyfile) from the `deploy` folder.
+Get [docker-compose-ssl.yml](deploy/docker-compose-ssl.yml) and [Caddyfile](deploy/Caddyfile) from the `deploy` folder.
 
 **2. Configure DNS**
 

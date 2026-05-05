@@ -1,8 +1,6 @@
 services:
   caddy:
-    build:
-      context: .
-      dockerfile: Dockerfile.caddy
+    image: poliuscorp/filesync-caddy
     container_name: filesync-caddy
     ports:
       - "443:443"
