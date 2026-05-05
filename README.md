@@ -68,9 +68,18 @@ Access FileSync at `http://localhost:80`
 
 **1. Download the required files**
 
-Get [docker-compose-ssl.yml](deploy/docker-compose-ssl.yml) and [Caddyfile](deploy/Caddyfile) from the `deploy` folder.
+Get [docker-compose-ssl.yml](deploy/docker-compose-ssl.yml), [Dockerfile.caddy](deploy/Dockerfile.caddy) and [Caddyfile](deploy/Caddyfile) from the `deploy` folder.
 
-**2. Generate a secret key**
+**2. Configure DNS**
+
+Create **two** `A` records pointing to your server's public IP:
+
+- `yourdomain.com` — the web app
+- `turn.yourdomain.com` — the STUN/TURN server (shares port 443 with the web app via SNI)
+
+Both records must resolve to the same IP. The `turn.` subdomain lets the TURN server reach browsers through firewalls that only allow outbound HTTPS traffic.
+
+**3. Generate a secret key**
 
 Run the following command to generate a secure 32-byte base64-encoded secret:
 
@@ -78,7 +87,7 @@ Run the following command to generate a secure 32-byte base64-encoded secret:
 python3 -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
 ```
 
-**3. Configure the secret**
+**4. Configure the secret**
 
 Open `docker-compose-ssl.yml` and replace **both occurrences** of `<SECRET_KEY>` with the generated value.
 
@@ -91,24 +100,54 @@ Example:
 ...
 ```
 
-**4. Configure your domain**
+**5. Configure your domain**
 
-Open `Caddyfile` and replace `yourdomain.com` with your actual domain.
+Replace `yourdomain.com` with your actual domain in **both** `Caddyfile` and `docker-compose-ssl.yml` (the coturn `--realm` flag).
 
-Example:
+Example `Caddyfile`:
 ```
-filesync.app {
+{
+	layer4 {
+		:443 {
+			@acme tls {
+				alpn acme-tls/1
+			}
+			route @acme {
+				proxy 127.0.0.1:8443
+			}
+
+			@turn tls {
+				sni turn.filesync.app
+			}
+			route @turn {
+				tls
+				proxy coturn:3478
+			}
+
+			@web tls
+			route @web {
+				proxy 127.0.0.1:8443
+			}
+		}
+	}
+}
+
+filesync.app:8443 {
 	reverse_proxy filesync:80
+}
+
+turn.filesync.app:8443 {
+	respond 404
 }
 ```
 
-**5. Start FileSync**
+**6. Start FileSync**
 
 ```bash
 docker-compose -f docker-compose-ssl.yml up -d
 ```
 
-Caddy will automatically obtain and manage SSL certificates from Let's Encrypt.
+Caddy will automatically obtain and manage SSL certificates from Let's Encrypt for both `yourdomain.com` and `turn.yourdomain.com`.
 
 Access FileSync at `https://yourdomain.com`
 
@@ -131,10 +170,9 @@ To expose FileSync to the internet, ensure the following ports are open on your 
 - **Port 3478** (TCP + UDP) - STUN/TURN server for WebRTC
 
 ### HTTPS Setup
-- **Port 443** (TCP) - Web interface (HTTPS)
-- **Port 3478** (TCP + UDP) - STUN/TURN server for WebRTC
+- **Port 443** (TCP) - Web interface **and** STUN/TURN (multiplexed by SNI)
 
-> **Note:** Port 3478 is essential for establishing peer-to-peer connections, especially when devices are behind NAT/firewalls.
+> **Note:** TURN traffic for `turn.yourdomain.com` is wrapped in TLS and shares port 443 with the web app, so peers behind firewalls that only allow outbound HTTPS can still establish a connection. No other ports need to be opened.
 
 ## Customizing Ports
 
