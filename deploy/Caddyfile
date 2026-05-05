@@ -1,3 +1,42 @@
-yourdomain.com {
+{
+	# Single public listener on :443. Route by SNI:
+	#   - ACME TLS-ALPN-01 challenges  -> internal Caddy HTTPS handler
+	#   - turn.yourdomain.com          -> terminate TLS, proxy plain TURN to coturn
+	#   - yourdomain.com (default)     -> internal Caddy HTTPS handler (web app)
+	layer4 {
+		:443 {
+			@acme tls {
+				alpn acme-tls/1
+			}
+			route @acme {
+				proxy 127.0.0.1:8443
+			}
+
+			@turn tls {
+				sni turn.yourdomain.com
+			}
+			route @turn {
+				tls
+				proxy coturn:3478
+			}
+
+			@web tls
+			route @web {
+				proxy 127.0.0.1:8443
+			}
+		}
+	}
+}
+
+# Internal HTTPS site for the web app.
+# Reachable only via the layer4 forwarder above.
+yourdomain.com:8443 {
 	reverse_proxy filesync:80
+}
+
+# Stub site so Caddy obtains and renews a TLS certificate for the TURN
+# subdomain. Layer4 terminates TLS for turn.* traffic using this cert and
+# never actually serves HTTP from this block.
+turn.yourdomain.com:8443 {
+	respond 404
 }

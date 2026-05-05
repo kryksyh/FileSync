@@ -5,12 +5,26 @@ class Turn {
 
   getServers = async () => {
     await this._getCredentials();
+    const host = window.location.hostname;
+    // HTTPS deployments terminate TLS for `turn.<host>:443` at Caddy and
+    // proxy plain TURN to coturn. Going through :443 lets connections
+    // traverse firewalls that block 3478.
+    if (window.location.protocol === 'https:') {
+      return [
+        {
+          urls: `turns:turn.${host}:443?transport=tcp`,
+          username: this._username,
+          credential: this._credential,
+        }
+      ]
+    }
+    // HTTP-only deployments keep coturn published on 3478.
     return [
       {
-        urls: `stun:${window.location.hostname}:3478`
+        urls: `stun:${host}:3478`
       },
       {
-        urls: `turn:${window.location.hostname}:3478`,
+        urls: `turn:${host}:3478`,
         username: this._username,
         credential: this._credential,
       }
